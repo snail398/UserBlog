@@ -1,0 +1,101 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# Visual Studio / Rider / IDE files
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.DotSettings.user
+
+# Rider cache
+.idea/
+*.sln.iml
+
+# ASP.NET / .NET user secrets
+secrets.json
+appsettings.Local.json
+
+# Local environment configs
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+Logs/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.assets.json
+
+# NuGet cache / restore artifacts
+.nuget/
+.nuget/packages/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Code coverage
+coverage/
+coverage.xml
+coverage.cobertura.xml
+coverage.opencover.xml
+lcov.info
+
+# Docker
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.pid
+
+# Publish output
+publish/
+Published/
+wwwroot/dist/
+wwwroot/build/
+
+# Entity Framework temporary files
+Migrations/*.Designer.cs.tmp
+
+# JetBrains Rider generated files
+_ReSharper*/
+*.ReSharper
+*.idea/**/workspace.xml
+*.idea/**/tasks.xml
+*.idea/**/usage.statistics.xml
+*.idea/**/dictionaries/
+*.idea/**/shelf/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
