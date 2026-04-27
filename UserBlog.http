@@ -1,6 +1,26 @@
 @UserBlog_HostAddress = http://localhost:5190
 
-GET {{UserBlog_HostAddress}}/api/health/error
+GET {{UserBlog_HostAddress}}/api/health
 Accept: application/json
 
-###
+### Register user
+POST {{UserBlog_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "user@example.com",
+  "username": "user",
+  "password": "Password123!"
+}
+
+### Register user - validation error
+POST {{UserBlog_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "bad-email",
+  "username": "jo",
+  "password": "123"
+}

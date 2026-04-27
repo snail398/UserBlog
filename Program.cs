@@ -7,12 +7,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException(
-        "Connection string 'Postgres' is not configured.");
+    throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
 }
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
