@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using UserBlog.Auth;
 using UserBlog.Common.Middleware;
 using UserBlog.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(connectionString))
