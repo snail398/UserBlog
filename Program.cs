@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using UserBlog.Common.Middleware;
 using UserBlog.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,13 +19,12 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<ErrorHandlingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 
 app.MapControllers();

@@ -1,0 +1,65 @@
+using System.Text.Json;
+using UserBlog.Common.Exceptions;
+
+namespace UserBlog.Common.Middleware;
+
+public sealed class ErrorHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ErrorHandlingMiddleware> _logger;
+
+    public ErrorHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<ErrorHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (AppException exception)
+        {
+            await HandleAppExceptionAsync(context, exception);
+        }
+        catch (Exception exception)
+        {
+            await HandleUnexpectedExceptionAsync(context, exception);
+        }
+    }
+
+    private static async Task HandleAppExceptionAsync(
+        HttpContext context,
+        AppException exception)
+    {
+        context.Response.StatusCode = exception.StatusCode;
+        context.Response.ContentType = "application/json";
+
+        var error = ApiError.Create(
+            exception.ErrorCode,
+            exception.Message,
+            exception.Details);
+
+        await context.Response.WriteAsJsonAsync(error);
+    }
+
+    private async Task HandleUnexpectedExceptionAsync(
+        HttpContext context,
+        Exception exception)
+    {
+        _logger.LogError(exception, "Unhandled exception occurred.");
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var error = ApiError.Create(
+            "INTERNAL_SERVER_ERROR",
+            "An unexpected error occurred");
+
+        await context.Response.WriteAsJsonAsync(error);
+    }
+}

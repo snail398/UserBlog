@@ -1,6 +1,6 @@
 @UserBlog_HostAddress = http://localhost:5190
 
-GET {{UserBlog_HostAddress}}/api/health
+GET {{UserBlog_HostAddress}}/api/health/error
 Accept: application/json
 
 ###
