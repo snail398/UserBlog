@@ -12,11 +12,15 @@ public sealed class AuthService : IAuthService
 {
     private readonly AppDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly ITokenHasher _tokenHasher;
 
-    public AuthService(AppDbContext dbContext, IPasswordHasher passwordHasher)
+    public AuthService(AppDbContext dbContext, IPasswordHasher passwordHasher, IJwtTokenService jwtTokenService, ITokenHasher tokenHasher)
     {
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
+        _jwtTokenService = jwtTokenService;
+        _tokenHasher = tokenHasher;
     }
 
     public async Task<UserResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -45,6 +49,43 @@ public sealed class AuthService : IAuthService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return UserMapper.ToResponse(user);
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateLoginRequest(request);
+
+        var email = NormalizeEmail(request.Email);
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+
+        if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+        {
+            throw new UnauthorizedAppException("INVALID_CREDENTIALS", "Invalid email or password");
+        }
+
+        var tokenPair = _jwtTokenService.GenerateTokenPair(user);
+
+        var refreshToken = new RefreshToken
+        {
+            Id = tokenPair.RefreshTokenId,
+            UserId = user.Id,
+            TokenHash = _tokenHasher.Hash(tokenPair.RefreshToken),
+            ExpiresAt = tokenPair.RefreshTokenExpiresAt,
+            RevokedAt = null,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        _dbContext.RefreshTokens.Add(refreshToken);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new AuthResponse
+        {
+            AccessToken = tokenPair.AccessToken,
+            RefreshToken = tokenPair.RefreshToken,
+            User = UserMapper.ToResponse(user)
+        };
     }
 
     private static string NormalizeEmail(string email)
@@ -129,6 +170,32 @@ public sealed class AuthService : IAuthService
         if (usernameExists)
         {
             throw new ConflictException("USERNAME_ALREADY_EXISTS", "User with this username already exists");
+        }
+    }
+
+    private static void ValidateLoginRequest(LoginRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            errors["email"] = "Email is required";
+        }
+        else if (!IsValidEmail(request.Email))
+        {
+            errors["email"] = "Email is invalid";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            errors["password"] = "Password is required";
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationAppException(
+                "Request validation failed",
+                errors);
         }
     }
 }

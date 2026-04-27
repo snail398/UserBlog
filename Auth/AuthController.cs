@@ -23,4 +23,12 @@ public sealed class AuthController : ControllerBase
 
         return Created($"/api/users/{user.Id}", ApiResponse<UserResponse>.Success(user));
     }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(LoginRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _authService.LoginAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<AuthResponse>.Success(result));
+    }
 }
