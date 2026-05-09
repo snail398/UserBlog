@@ -1,4 +1,5 @@
 using System.Text.Json;
+using UserBlog.Common.Constants;
 using UserBlog.Common.Exceptions;
 
 namespace UserBlog.Common.Middleware;
@@ -39,6 +40,6 @@ public sealed class ErrorHandlingMiddleware
     {
         _logger.LogError(exception, "Unhandled exception occurred.");
 
-         await HttpErrorResponseWriter.WriteAsync(context, StatusCodes.Status500InternalServerError, "INTERNAL_SERVER_ERROR", "An unexpected error occurred");
+         await HttpErrorResponseWriter.WriteAsync(context, StatusCodes.Status500InternalServerError, ErrorCodes.InternalServerError, "An unexpected error occurred");
     }
 }

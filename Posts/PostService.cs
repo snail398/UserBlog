@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UserBlog.Common;
+using UserBlog.Common.Constants;
 using UserBlog.Common.Exceptions;
 using UserBlog.Data;
 using UserBlog.Data.Entities;
@@ -47,7 +48,7 @@ public sealed class PostService : IPostService
 
         if (createdPost is null)
         {
-            throw new NotFoundException("POST_NOT_FOUND", "Post not found");
+            throw new NotFoundException(ErrorCodes.PostNotFound, "Post not found");
         }
 
         return PostMapper.ToResponse(createdPost);
@@ -98,7 +99,7 @@ public sealed class PostService : IPostService
 
         if (post is null)
         {
-            throw new NotFoundException("POST_NOT_FOUND", "Post not found");
+            throw new NotFoundException(ErrorCodes.PostNotFound, "Post not found");
         }
 
         if (post.Status == PostStatus.Published)
@@ -108,12 +109,12 @@ public sealed class PostService : IPostService
 
         if (!TryGetCurrentUserId(out var currentUserId))
         {
-            throw new NotFoundException("POST_NOT_FOUND", "Post not found");
+            throw new NotFoundException(ErrorCodes.PostNotFound, "Post not found");
         }
 
         if (post.AuthorId != currentUserId)
         {
-            throw new NotFoundException("POST_NOT_FOUND", "Post not found");
+            throw new NotFoundException(ErrorCodes.PostNotFound, "Post not found");
         }
 
         return PostMapper.ToResponse(post);
@@ -247,12 +248,12 @@ public sealed class PostService : IPostService
 
         if (post is null)
         {
-            throw new NotFoundException("POST_NOT_FOUND", "Post not found");
+            throw new NotFoundException(ErrorCodes.PostNotFound, "Post not found");
         }
 
         if (post.AuthorId != currentUserId)
         {
-            throw new ForbiddenException("FORBIDDEN", "You can only modify your own posts");
+            throw new ForbiddenException(ErrorCodes.Forbidden, "You can only modify your own posts");
         }
 
         return post;

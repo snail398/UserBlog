@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using UserBlog.Common;
+using UserBlog.Common.Constants;
 
 namespace UserBlog.Auth.JWT;
 
@@ -50,12 +51,12 @@ public static class JWTBuilderExtension
                     {
                         context.HandleResponse();
 
-                        var errorCode = "UNAUTHORIZED";
+                        var errorCode = ErrorCodes.Unauthorized;
                         var message = "Access token is missing or invalid";
 
                         if (context.AuthenticateFailure is SecurityTokenExpiredException)
                         {
-                            errorCode = "ACCESS_TOKEN_EXPIRED";
+                            errorCode = ErrorCodes.AccessTokenExpired;
                             message = "Access token has expired";
                         }
 
@@ -64,7 +65,7 @@ public static class JWTBuilderExtension
 
                     OnForbidden = async context =>
                     {
-                        await HttpErrorResponseWriter.WriteAsync(context.HttpContext, StatusCodes.Status403Forbidden, "FORBIDDEN", "You do not have permission to access this resource");
+                        await HttpErrorResponseWriter.WriteAsync(context.HttpContext, StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "You do not have permission to access this resource");
                     }
                 };
             });

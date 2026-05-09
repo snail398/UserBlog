@@ -3,6 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using UserBlog.Auth.JWT;
+using UserBlog.Common.Constants;
 using UserBlog.Common.Exceptions;
 using UserBlog.Data.Entities;
 
@@ -64,36 +66,36 @@ public sealed class JwtTokenService : IJwtTokenService
 
             if (validatedToken is not JwtSecurityToken jwtSecurityToken)
             {
-                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+                throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
             }
 
             var algorithm = jwtSecurityToken.Header.Alg;
 
             if (!string.Equals(algorithm, SecurityAlgorithms.HmacSha256, StringComparison.Ordinal))
             {
-                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+                throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
             }
 
-            var tokenType = principal.FindFirstValue("type");
+            var tokenType = principal.FindFirstValue(JwtClaimNames.TokenType);
 
-            if (tokenType != "refresh")
+            if (tokenType != JwtClaimNames.RefreshTokenType)
             {
-                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+                throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
             }
 
             return principal;
         }
         catch (SecurityTokenExpiredException)
         {
-            throw new UnauthorizedAppException("REFRESH_TOKEN_EXPIRED", "Refresh token has expired");
+            throw new UnauthorizedAppException(ErrorCodes.RefreshTokenExpired, "Refresh token has expired");
         }
         catch (SecurityTokenException)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
         catch (ArgumentException)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
     }
 
@@ -103,8 +105,8 @@ public sealed class JwtTokenService : IJwtTokenService
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email),
-            new("username", user.Username),
-            new("type", "access")
+            new(JwtClaimNames.Username, user.Username),
+            new(JwtClaimNames.TokenType, JwtClaimNames.AccessTokenType)
         };
 
         return GenerateToken(claims, _jwtOptions.AccessTokenSecret, now, now.AddMinutes(_jwtOptions.AccessTokenLifetimeMinutes));
@@ -115,8 +117,8 @@ public sealed class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new("tokenId", refreshTokenId.ToString()),
-            new("type", "refresh")
+            new(JwtClaimNames.TokenId, refreshTokenId.ToString()),
+            new(JwtClaimNames.TokenType, JwtClaimNames.RefreshTokenType)
         };
 
         return GenerateToken(claims, _jwtOptions.RefreshTokenSecret, now, now.AddDays(_jwtOptions.RefreshTokenLifetimeDays));

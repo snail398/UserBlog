@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UserBlog.Common;
+using UserBlog.Common.Constants;
 using UserBlog.Common.Exceptions;
 using UserBlog.Data;
 using UserBlog.Users.Dtos;
@@ -27,7 +28,7 @@ public sealed class UserService : IUserService
 
         if (user is null)
         {
-            throw new UnauthorizedAppException("UNAUTHORIZED", "Current user does not exist");
+            throw new UnauthorizedAppException(ErrorCodes.Unauthorized, "Current user does not exist");
         }
 
         return UserMapper.ToResponse(user);

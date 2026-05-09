@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using UserBlog.Data.Constants;
 using UserBlog.Data.Entities;
 
 namespace UserBlog.Data.Configurations;
@@ -39,10 +40,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(x => x.Email)
             .IsUnique()
-            .HasDatabaseName("ux_users_email");
+            .HasDatabaseName(DatabaseConstraints.UniqueUserEmail);
 
         builder.HasIndex(x => x.Username)
             .IsUnique()
-            .HasDatabaseName("ux_users_username");
+            .HasDatabaseName(DatabaseConstraints.UniqueUserUsername);
     }
 }

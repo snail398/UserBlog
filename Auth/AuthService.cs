@@ -2,8 +2,11 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UserBlog.Auth.Dtos;
+using UserBlog.Auth.JWT;
+using UserBlog.Common.Constants;
 using UserBlog.Common.Exceptions;
 using UserBlog.Data;
+using UserBlog.Data.Constants;
 using UserBlog.Data.Entities;
 using UserBlog.Users;
 using UserBlog.Users.Dtos;
@@ -50,13 +53,13 @@ public sealed class AuthService : IAuthService
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception, "ux_users_email"))
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception, DatabaseConstraints.UniqueUserEmail))
         {
-            throw new ConflictException("EMAIL_ALREADY_EXISTS", "User with this email already exists");
+            throw new ConflictException(ErrorCodes.EmailAlreadyExists, "User with this email already exists");
         }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception, "ux_users_username"))
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception, DatabaseConstraints.UniqueUserUsername))
         {
-            throw new ConflictException("USERNAME_ALREADY_EXISTS", "User with this username already exists");
+            throw new ConflictException(ErrorCodes.UsernameAlreadyExists, "User with this username already exists");
         }
 
         return UserMapper.ToResponse(user);
@@ -77,7 +80,7 @@ public sealed class AuthService : IAuthService
 
         if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAppException("INVALID_CREDENTIALS", "Invalid email or password");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidCredentials, "Invalid email or password");
         }
 
         var tokenPair = _jwtTokenService.GenerateTokenPair(user);
@@ -115,29 +118,29 @@ public sealed class AuthService : IAuthService
 
         if (storedRefreshToken is null)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         if (storedRefreshToken.UserId != userId)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         if (storedRefreshToken.RevokedAt is not null)
         {
-            throw new UnauthorizedAppException("REFRESH_TOKEN_REVOKED", "Refresh token has been revoked");
+            throw new UnauthorizedAppException(ErrorCodes.RefreshTokenRevoked, "Refresh token has been revoked");
         }
 
         if (storedRefreshToken.ExpiresAt <= DateTimeOffset.UtcNow)
         {
-            throw new UnauthorizedAppException("REFRESH_TOKEN_EXPIRED", "Refresh token has expired");
+            throw new UnauthorizedAppException(ErrorCodes.RefreshTokenExpired, "Refresh token has expired");
         }
 
         var refreshTokenHash = _tokenHasher.Hash(request.RefreshToken);
 
         if (!string.Equals(storedRefreshToken.TokenHash, refreshTokenHash, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         var user = storedRefreshToken.User;
@@ -179,19 +182,19 @@ public sealed class AuthService : IAuthService
 
         if (storedRefreshToken is null)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         if (storedRefreshToken.UserId != userId)
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         var refreshTokenHash = _tokenHasher.Hash(request.RefreshToken);
 
         if (!string.Equals(storedRefreshToken.TokenHash, refreshTokenHash, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token is invalid");
         }
 
         if (storedRefreshToken.RevokedAt is null)
@@ -224,22 +227,22 @@ public sealed class AuthService : IAuthService
 
         if (emailExists)
         {
-            throw new ConflictException("EMAIL_ALREADY_EXISTS", "User with this email already exists");
+            throw new ConflictException(ErrorCodes.EmailAlreadyExists, "User with this email already exists");
         }
 
         if (usernameExists)
         {
-            throw new ConflictException("USERNAME_ALREADY_EXISTS", "User with this username already exists");
+            throw new ConflictException(ErrorCodes.UsernameAlreadyExists, "User with this username already exists");
         }
     }
 
     private static Guid GetUserIdFromPrincipal(ClaimsPrincipal principal)
     {
-        var userIdValue = principal.FindFirstValue("sub");
+        var userIdValue = principal.FindFirstValue(JwtClaimNames.Subject);
 
         if (!Guid.TryParse(userIdValue, out var userId))
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token contains invalid user id");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token contains invalid user id");
         }
 
         return userId;
@@ -247,11 +250,11 @@ public sealed class AuthService : IAuthService
 
     private static Guid GetRefreshTokenIdFromPrincipal(ClaimsPrincipal principal)
     {
-        var tokenIdValue = principal.FindFirstValue("tokenId");
+        var tokenIdValue = principal.FindFirstValue(JwtClaimNames.TokenId);
 
         if (!Guid.TryParse(tokenIdValue, out var tokenId))
         {
-            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token contains invalid token id");
+            throw new UnauthorizedAppException(ErrorCodes.InvalidRefreshToken, "Refresh token contains invalid token id");
         }
 
         return tokenId;

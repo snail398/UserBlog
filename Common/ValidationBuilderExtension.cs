@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using UserBlog.Common.Constants;
 
 namespace UserBlog.Common;
 
@@ -20,7 +21,7 @@ public static class ValidationBuilderExtension
                         x => ToCamelCase(x.Key),
                         x => x.Value!.Errors.First().ErrorMessage);
 
-                var error = ApiError.Create("VALIDATION_ERROR", "Request validation failed", details);
+                var error = ApiError.Create(ErrorCodes.ValidationError, "Request validation failed", details);
 
                 return new BadRequestObjectResult(error);
             };
