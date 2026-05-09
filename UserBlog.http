@@ -49,3 +49,21 @@ Accept: application/json
 GET {{UserBlog_HostAddress}}/api/users/me
 Accept: application/json
 Authorization: Bearer {{AccessToken}}
+
+### Refresh tokens
+POST {{UserBlog_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+Accept: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### Logout
+POST {{UserBlog_HostAddress}}/api/auth/logout
+Content-Type: application/json
+Accept: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
