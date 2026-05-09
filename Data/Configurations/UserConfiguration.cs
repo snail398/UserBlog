@@ -38,9 +38,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         builder.HasIndex(x => x.Email)
-            .IsUnique();
+            .IsUnique()
+            .HasDatabaseName("ux_users_email");
 
         builder.HasIndex(x => x.Username)
-            .IsUnique();
+            .IsUnique()
+            .HasDatabaseName("ux_users_username");
     }
 }

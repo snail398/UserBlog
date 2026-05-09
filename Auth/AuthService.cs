@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using UserBlog.Auth.Dtos;
 using UserBlog.Common.Exceptions;
 using UserBlog.Data;
@@ -45,9 +46,27 @@ public sealed class AuthService : IAuthService
 
         _dbContext.Users.Add(user);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception, "ux_users_email"))
+        {
+            throw new ConflictException("EMAIL_ALREADY_EXISTS", "User with this email already exists");
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception, "ux_users_username"))
+        {
+            throw new ConflictException("USERNAME_ALREADY_EXISTS", "User with this username already exists");
+        }
 
         return UserMapper.ToResponse(user);
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException exception, string constraintName)
+    {
+        return exception.InnerException is PostgresException postgresException
+            && postgresException.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation
+            && postgresException.ConstraintName == constraintName;
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
