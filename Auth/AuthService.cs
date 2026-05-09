@@ -26,8 +26,6 @@ public sealed class AuthService : IAuthService
 
     public async Task<UserResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateRegisterRequest(request);
-
         var email = NormalizeEmail(request.Email);
         var username = request.Username.Trim();
 
@@ -54,8 +52,6 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateLoginRequest(request);
-
         var email = NormalizeEmail(request.Email);
 
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
@@ -91,8 +87,6 @@ public sealed class AuthService : IAuthService
     
     public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateRefreshTokenRequest(request);
-
         var principal = _jwtTokenService.ValidateRefreshToken(request.RefreshToken);
 
         var userId = GetUserIdFromPrincipal(principal);
@@ -157,8 +151,6 @@ public sealed class AuthService : IAuthService
 
     public async Task<LogoutResponse> LogoutAsync(LogoutRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateLogoutRequest(request);
-
         var principal = _jwtTokenService.ValidateRefreshToken(request.RefreshToken);
 
         var userId = GetUserIdFromPrincipal(principal);
@@ -201,65 +193,6 @@ public sealed class AuthService : IAuthService
         return email.Trim().ToLowerInvariant();
     }
 
-    private static void ValidateRegisterRequest(RegisterRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            errors["email"] = "Email is required";
-        }
-        else if (!IsValidEmail(request.Email))
-        {
-            errors["email"] = "Email is invalid";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Username))
-        {
-            errors["username"] = "Username is required";
-        }
-        else
-        {
-            var username = request.Username.Trim();
-
-            if (username.Length < 3 || username.Length > 32)
-            {
-                errors["username"] = "Username must be between 3 and 32 characters";
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Password))
-        {
-            errors["password"] = "Password is required";
-        }
-        else if (request.Password.Length < 8)
-        {
-            errors["password"] = "Password must be at least 8 characters";
-        }
-        else if (request.Password.Length > 128)
-        {
-            errors["password"] = "Password must not exceed 128 characters";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
-    }
-
-    private static bool IsValidEmail(string email)
-    {
-        try
-        {
-            var address = new System.Net.Mail.MailAddress(email);
-            return address.Address == email;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private async Task EnsureUserDoesNotExistAsync(string email, string username, CancellationToken cancellationToken)
     {
         var existingUsers = await _dbContext.Users
@@ -278,45 +211,6 @@ public sealed class AuthService : IAuthService
         if (usernameExists)
         {
             throw new ConflictException("USERNAME_ALREADY_EXISTS", "User with this username already exists");
-        }
-    }
-
-    private static void ValidateLoginRequest(LoginRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            errors["email"] = "Email is required";
-        }
-        else if (!IsValidEmail(request.Email))
-        {
-            errors["email"] = "Email is invalid";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Password))
-        {
-            errors["password"] = "Password is required";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
-    }
-
-    private static void ValidateRefreshTokenRequest(RefreshTokenRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-        {
-            errors["refreshToken"] = "Refresh token is required";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
         }
     }
 
@@ -342,20 +236,5 @@ public sealed class AuthService : IAuthService
         }
 
         return tokenId;
-    }
-
-    private static void ValidateLogoutRequest(LogoutRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-        {
-            errors["refreshToken"] = "Refresh token is required";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
     }
 }

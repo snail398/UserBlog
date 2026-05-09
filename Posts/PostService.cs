@@ -20,8 +20,6 @@ public sealed class PostService : IPostService
 
     public async Task<PostResponse> CreateAsync(CreatePostRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateCreatePostRequest(request);
-
         var currentUserId = _currentUser.UserId;
         var now = DateTimeOffset.UtcNow;
 
@@ -57,8 +55,6 @@ public sealed class PostService : IPostService
 
     public async Task<PaginatedResponse<PostListItemResponse>> GetPublicPostsAsync(PostQuery query, CancellationToken cancellationToken = default)
     {
-        ValidatePostQuery(query);
-
         var page = query.Page;
         var pageSize = query.PageSize;
 
@@ -125,8 +121,6 @@ public sealed class PostService : IPostService
 
     public async Task<PaginatedResponse<PostListItemResponse>> GetMyPostsAsync(PostQuery query, CancellationToken cancellationToken = default)
     {
-        ValidatePostQuery(query);
-
         var currentUserId = _currentUser.UserId;
 
         var page = query.Page;
@@ -172,8 +166,6 @@ public sealed class PostService : IPostService
 
     public async Task<PostResponse> UpdateAsync(Guid postId, UpdatePostRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateUpdatePostRequest(request);
-
         var post = await GetOwnedPostAsync(postId, cancellationToken);
 
         if (request.Title is not null)
@@ -264,103 +256,6 @@ public sealed class PostService : IPostService
         }
 
         return post;
-    }
-
-    private static void ValidateCreatePostRequest(CreatePostRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(request.Title))
-        {
-            errors["title"] = "Title is required";
-        }
-        else if (request.Title.Trim().Length > 120)
-        {
-            errors["title"] = "Title must not exceed 120 characters";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Content))
-        {
-            errors["content"] = "Content is required";
-        }
-        else if (request.Content.Trim().Length > 50_000)
-        {
-            errors["content"] = "Content must not exceed 50000 characters";
-        }
-
-        if (!Enum.IsDefined(request.Status))
-        {
-            errors["status"] = "Status is invalid";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
-    }
-
-    private static void ValidatePostQuery(PostQuery query)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (query.Page < 1)
-        {
-            errors["page"] = "Page must be greater than or equal to 1";
-        }
-
-        if (query.PageSize < 1 || query.PageSize > 100)
-        {
-            errors["pageSize"] = "Page size must be between 1 and 100";
-        }
-
-        if (query.Search is not null && query.Search.Length > 200)
-        {
-            errors["search"] = "Search must not exceed 200 characters";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
-    }
-
-    private static void ValidateUpdatePostRequest(UpdatePostRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-
-        if (request.Title is not null)
-        {
-            if (string.IsNullOrWhiteSpace(request.Title))
-            {
-                errors["title"] = "Title must not be empty";
-            }
-            else if (request.Title.Trim().Length > 120)
-            {
-                errors["title"] = "Title must not exceed 120 characters";
-            }
-        }
-
-        if (request.Content is not null)
-        {
-            if (string.IsNullOrWhiteSpace(request.Content))
-            {
-                errors["content"] = "Content must not be empty";
-            }
-            else if (request.Content.Trim().Length > 50_000)
-            {
-                errors["content"] = "Content must not exceed 50000 characters";
-            }
-        }
-
-        if (request.Title is null && request.Content is null)
-        {
-            errors["request"] = "At least one field must be provided";
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationAppException("Request validation failed", errors);
-        }
     }
 
     private static void ValidatePostCanBePublished(Post post)

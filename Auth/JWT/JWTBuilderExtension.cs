@@ -9,6 +9,8 @@ public static class JWTBuilderExtension
 {
     public static void AddJWT(this WebApplicationBuilder builder)
     {
+        builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+        
         var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
 
         if (jwtOptions is null)
