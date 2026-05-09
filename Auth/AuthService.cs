@@ -114,7 +114,10 @@ public sealed class AuthService : IAuthService
         var userId = GetUserIdFromPrincipal(principal);
         var refreshTokenId = GetRefreshTokenIdFromPrincipal(principal);
 
-        var storedRefreshToken = await _dbContext.RefreshTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.Id == refreshTokenId, cancellationToken);
+        var storedRefreshToken = await _dbContext.RefreshTokens
+            .Include(x => x.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == refreshTokenId, cancellationToken);
 
         if (storedRefreshToken is null)
         {
@@ -146,8 +149,18 @@ public sealed class AuthService : IAuthService
         var user = storedRefreshToken.User;
 
         var newTokenPair = _jwtTokenService.GenerateTokenPair(user);
+        var now = DateTimeOffset.UtcNow;
 
-        storedRefreshToken.RevokedAt = DateTimeOffset.UtcNow;
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var revokedCount = await _dbContext.RefreshTokens
+            .Where(x => x.Id == refreshTokenId && x.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+
+        if (revokedCount == 0)
+        {
+            throw new UnauthorizedAppException(ErrorCodes.RefreshTokenRevoked, "Refresh token has been revoked");
+        }
 
         var newRefreshToken = new RefreshToken
         {
@@ -156,12 +169,14 @@ public sealed class AuthService : IAuthService
             TokenHash = _tokenHasher.Hash(newTokenPair.RefreshToken),
             ExpiresAt = newTokenPair.RefreshTokenExpiresAt,
             RevokedAt = null,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = now
         };
 
         _dbContext.RefreshTokens.Add(newRefreshToken);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return new AuthResponse
         {
