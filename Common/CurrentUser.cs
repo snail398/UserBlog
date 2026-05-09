@@ -33,4 +33,15 @@ public sealed class CurrentUser : ICurrentUser
             return userId;
         }
     }
+
+    public bool TryGetUserId(out Guid userId)
+    {
+        userId = default;
+
+        var user = _httpContextAccessor.HttpContext?.User;
+
+        var userIdValue = user?.FindFirstValue("sub");
+
+        return Guid.TryParse(userIdValue, out userId);
+    }
 }

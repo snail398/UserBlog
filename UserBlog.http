@@ -1,4 +1,6 @@
 @UserBlog_HostAddress = http://localhost:5190
+@AccessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxOWM3MTY3NS02YmZmLTQ4NTQtYjU1My02ZDY4YWM2YzMxYTciLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJ1c2VybmFtZSI6InVzZXIiLCJ0eXBlIjoiYWNjZXNzIiwibmJmIjoxNzc4MzUxMjczLCJleHAiOjE3NzgzNTIxNzMsImlzcyI6IlVzZXJCbG9nIiwiYXVkIjoiVXNlckJsb2dDbGllbnQifQ.vF6v5y0jPNuZYYFwXpUWeHz2N3EV1mexFBkNOpXjDiA
+@PostId = cb6650e7-de10-4dc1-8457-2e4061316cc0
 
 GET {{UserBlog_HostAddress}}/api/health
 Accept: application/json
@@ -67,3 +69,163 @@ Accept: application/json
 {
   "refreshToken": "{{RefreshToken}}"
 }
+
+
+
+### Create draft post
+POST {{UserBlog_HostAddress}}/api/posts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "My first post",
+  "content": "Hello world from UserBlog",
+  "status": "Draft"
+}
+
+### Create published post
+POST {{UserBlog_HostAddress}}/api/posts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "My published post",
+  "content": "This post is visible to everyone.",
+  "status": "Published"
+}
+
+### Create post - validation error
+POST {{UserBlog_HostAddress}}/api/posts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "",
+  "content": "",
+  "status": "Draft"
+}
+
+### Get public posts
+GET {{UserBlog_HostAddress}}/api/posts
+Accept: application/json
+
+### Get public posts with pagination
+GET {{UserBlog_HostAddress}}/api/posts?page=1&pageSize=10
+Accept: application/json
+
+### Search public posts
+GET {{UserBlog_HostAddress}}/api/posts?page=1&pageSize=10&search=published
+Accept: application/json
+
+### Get public posts - validation error
+GET {{UserBlog_HostAddress}}/api/posts?page=0&pageSize=500
+Accept: application/json
+
+### Get post by id
+GET {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Accept: application/json
+
+### Get post by id as authenticated user
+GET {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Get post by id - not found
+GET {{UserBlog_HostAddress}}/api/posts/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Get my posts
+GET {{UserBlog_HostAddress}}/api/me/posts
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Get my draft posts
+GET {{UserBlog_HostAddress}}/api/me/posts?page=1&pageSize=10&status=Draft
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Get my published posts
+GET {{UserBlog_HostAddress}}/api/me/posts?page=1&pageSize=10&status=Published
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Search my posts
+GET {{UserBlog_HostAddress}}/api/me/posts?page=1&pageSize=10&search=first
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Get my posts - unauthorized
+GET {{UserBlog_HostAddress}}/api/me/posts
+Accept: application/json
+
+### Update post
+PATCH {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "Updated post title",
+  "content": "Updated post content"
+}
+
+### Update post title only
+PATCH {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "Only title updated"
+}
+
+### Update post - validation error
+PATCH {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+{
+  "title": "",
+  "content": ""
+}
+
+### Update post - unauthorized
+PATCH {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Should not work"
+}
+
+### Delete post
+DELETE {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Delete post - unauthorized
+DELETE {{UserBlog_HostAddress}}/api/posts/{{PostId}}
+Accept: application/json
+
+### Delete post - not found
+DELETE {{UserBlog_HostAddress}}/api/posts/00000000-0000-0000-0000-000000000000
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Publish post
+POST {{UserBlog_HostAddress}}/api/posts/{{PostId}}/publish
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Unpublish post
+POST {{UserBlog_HostAddress}}/api/posts/{{PostId}}/unpublish
+Accept: application/json
+Authorization: Bearer {{AccessToken}}
+
+### Publish post - unauthorized
+POST {{UserBlog_HostAddress}}/api/posts/{{PostId}}/publish
+Accept: application/json
