@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using UserBlog.Common.Exceptions;
 using UserBlog.Data.Entities;
 
 namespace UserBlog.Auth;
@@ -31,6 +32,69 @@ public sealed class JwtTokenService : IJwtTokenService
             RefreshTokenId = refreshTokenId,
             RefreshTokenExpiresAt = now.AddDays(_jwtOptions.RefreshTokenLifetimeDays)
         };
+    }
+
+    public ClaimsPrincipal ValidateRefreshToken(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(_jwtOptions.RefreshTokenSecret))
+        {
+            throw new InvalidOperationException("JWT refresh token secret is not configured.");
+        }
+
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _jwtOptions.Issuer,
+
+            ValidateAudience = true,
+            ValidAudience = _jwtOptions.Audience,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.RefreshTokenSecret)),
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        try
+        {
+            var principal = tokenHandler.ValidateToken(refreshToken, tokenValidationParameters, out var validatedToken);
+
+            if (validatedToken is not JwtSecurityToken jwtSecurityToken)
+            {
+                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            }
+
+            var algorithm = jwtSecurityToken.Header.Alg;
+
+            if (!string.Equals(algorithm, SecurityAlgorithms.HmacSha256, StringComparison.Ordinal))
+            {
+                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            }
+
+            var tokenType = principal.FindFirstValue("type");
+
+            if (tokenType != "refresh")
+            {
+                throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+            }
+
+            return principal;
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            throw new UnauthorizedAppException("REFRESH_TOKEN_EXPIRED", "Refresh token has expired");
+        }
+        catch (SecurityTokenException)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+        catch (ArgumentException)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
     }
 
     private string GenerateAccessToken(User user, DateTimeOffset now)

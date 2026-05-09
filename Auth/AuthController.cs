@@ -31,4 +31,12 @@ public sealed class AuthController : ControllerBase
 
         return Ok(ApiResponse<AuthResponse>.Success(result));
     }
+    
+    [HttpPost("refresh")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _authService.RefreshAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<AuthResponse>.Success(result));
+    }
 }
