@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using UserBlog.Auth.Dtos;
 using UserBlog.Common.Exceptions;
@@ -85,6 +86,113 @@ public sealed class AuthService : IAuthService
             AccessToken = tokenPair.AccessToken,
             RefreshToken = tokenPair.RefreshToken,
             User = UserMapper.ToResponse(user)
+        };
+    }
+    
+    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateRefreshTokenRequest(request);
+
+        var principal = _jwtTokenService.ValidateRefreshToken(request.RefreshToken);
+
+        var userId = GetUserIdFromPrincipal(principal);
+        var refreshTokenId = GetRefreshTokenIdFromPrincipal(principal);
+
+        var storedRefreshToken = await _dbContext.RefreshTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.Id == refreshTokenId, cancellationToken);
+
+        if (storedRefreshToken is null)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        if (storedRefreshToken.UserId != userId)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        if (storedRefreshToken.RevokedAt is not null)
+        {
+            throw new UnauthorizedAppException("REFRESH_TOKEN_REVOKED", "Refresh token has been revoked");
+        }
+
+        if (storedRefreshToken.ExpiresAt <= DateTimeOffset.UtcNow)
+        {
+            throw new UnauthorizedAppException("REFRESH_TOKEN_EXPIRED", "Refresh token has expired");
+        }
+
+        var refreshTokenHash = _tokenHasher.Hash(request.RefreshToken);
+
+        if (!string.Equals(storedRefreshToken.TokenHash, refreshTokenHash, StringComparison.Ordinal))
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        var user = storedRefreshToken.User;
+
+        var newTokenPair = _jwtTokenService.GenerateTokenPair(user);
+
+        storedRefreshToken.RevokedAt = DateTimeOffset.UtcNow;
+
+        var newRefreshToken = new RefreshToken
+        {
+            Id = newTokenPair.RefreshTokenId,
+            UserId = user.Id,
+            TokenHash = _tokenHasher.Hash(newTokenPair.RefreshToken),
+            ExpiresAt = newTokenPair.RefreshTokenExpiresAt,
+            RevokedAt = null,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        _dbContext.RefreshTokens.Add(newRefreshToken);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new AuthResponse
+        {
+            AccessToken = newTokenPair.AccessToken,
+            RefreshToken = newTokenPair.RefreshToken,
+            User = UserMapper.ToResponse(user)
+        };
+    }
+
+    public async Task<LogoutResponse> LogoutAsync(LogoutRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateLogoutRequest(request);
+
+        var principal = _jwtTokenService.ValidateRefreshToken(request.RefreshToken);
+
+        var userId = GetUserIdFromPrincipal(principal);
+        var refreshTokenId = GetRefreshTokenIdFromPrincipal(principal);
+
+        var storedRefreshToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Id == refreshTokenId, cancellationToken);
+
+        if (storedRefreshToken is null)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        if (storedRefreshToken.UserId != userId)
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        var refreshTokenHash = _tokenHasher.Hash(request.RefreshToken);
+
+        if (!string.Equals(storedRefreshToken.TokenHash, refreshTokenHash, StringComparison.Ordinal))
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token is invalid");
+        }
+
+        if (storedRefreshToken.RevokedAt is null)
+        {
+            storedRefreshToken.RevokedAt = DateTimeOffset.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return new LogoutResponse
+        {
+            Success = true
         };
     }
 
@@ -193,9 +301,61 @@ public sealed class AuthService : IAuthService
 
         if (errors.Count > 0)
         {
-            throw new ValidationAppException(
-                "Request validation failed",
-                errors);
+            throw new ValidationAppException("Request validation failed", errors);
+        }
+    }
+
+    private static void ValidateRefreshTokenRequest(RefreshTokenRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            errors["refreshToken"] = "Refresh token is required";
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationAppException("Request validation failed", errors);
+        }
+    }
+
+    private static Guid GetUserIdFromPrincipal(ClaimsPrincipal principal)
+    {
+        var userIdValue = principal.FindFirstValue("sub");
+
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token contains invalid user id");
+        }
+
+        return userId;
+    }
+
+    private static Guid GetRefreshTokenIdFromPrincipal(ClaimsPrincipal principal)
+    {
+        var tokenIdValue = principal.FindFirstValue("tokenId");
+
+        if (!Guid.TryParse(tokenIdValue, out var tokenId))
+        {
+            throw new UnauthorizedAppException("INVALID_REFRESH_TOKEN", "Refresh token contains invalid token id");
+        }
+
+        return tokenId;
+    }
+
+    private static void ValidateLogoutRequest(LogoutRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            errors["refreshToken"] = "Refresh token is required";
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationAppException("Request validation failed", errors);
         }
     }
 }

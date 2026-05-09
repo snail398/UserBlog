@@ -4,6 +4,7 @@ using UserBlog.Auth.JWT;
 using UserBlog.Common;
 using UserBlog.Common.Middleware;
 using UserBlog.Data;
+using UserBlog.Posts;
 using UserBlog.Users;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,7 @@ builder.Services.AddScoped<ITokenHasher, Sha256TokenHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(connectionString))

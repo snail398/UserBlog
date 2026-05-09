@@ -39,4 +39,12 @@ public sealed class AuthController : ControllerBase
 
         return Ok(ApiResponse<AuthResponse>.Success(result));
     }
+
+    [HttpPost("logout")]
+    public async Task<ActionResult<ApiResponse<LogoutResponse>>> Logout(LogoutRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _authService.LogoutAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<LogoutResponse>.Success(result));
+    }
 }
