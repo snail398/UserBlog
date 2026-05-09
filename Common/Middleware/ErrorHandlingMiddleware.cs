@@ -8,9 +8,7 @@ public sealed class ErrorHandlingMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorHandlingMiddleware> _logger;
 
-    public ErrorHandlingMiddleware(
-        RequestDelegate next,
-        ILogger<ErrorHandlingMiddleware> logger)
+    public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -32,34 +30,15 @@ public sealed class ErrorHandlingMiddleware
         }
     }
 
-    private static async Task HandleAppExceptionAsync(
-        HttpContext context,
-        AppException exception)
+    private static async Task HandleAppExceptionAsync(HttpContext context, AppException exception)
     {
-        context.Response.StatusCode = exception.StatusCode;
-        context.Response.ContentType = "application/json";
-
-        var error = ApiError.Create(
-            exception.ErrorCode,
-            exception.Message,
-            exception.Details);
-
-        await context.Response.WriteAsJsonAsync(error);
+        await HttpErrorResponseWriter.WriteAsync(context, exception.StatusCode, exception.ErrorCode, exception.Message, exception.Details);
     }
 
-    private async Task HandleUnexpectedExceptionAsync(
-        HttpContext context,
-        Exception exception)
+    private async Task HandleUnexpectedExceptionAsync(HttpContext context, Exception exception)
     {
         _logger.LogError(exception, "Unhandled exception occurred.");
 
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        context.Response.ContentType = "application/json";
-
-        var error = ApiError.Create(
-            "INTERNAL_SERVER_ERROR",
-            "An unexpected error occurred");
-
-        await context.Response.WriteAsJsonAsync(error);
+         await HttpErrorResponseWriter.WriteAsync(context, StatusCodes.Status500InternalServerError, "INTERNAL_SERVER_ERROR", "An unexpected error occurred");
     }
 }
